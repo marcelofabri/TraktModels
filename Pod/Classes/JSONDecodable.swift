@@ -9,7 +9,7 @@
 import Foundation
 import ISO8601DateFormatter
 
-protocol JSONDecodable {
+public protocol JSONDecodable {
     static func decode(j: AnyObject) -> Self?
 }
 
