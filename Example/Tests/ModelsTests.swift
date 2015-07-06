@@ -32,12 +32,11 @@ class ModelsTests: XCTestCase {
             "tvrage": NSNull()
         ]
         
-        let value = JSON.parse(json)
-        let id = Identifiers.decode(value)
+        let id = Identifiers.decode(json)
         
-        expect(id.value).toNot(beNil())
+        expect(id).toNot(beNil())
         
-        if let id = id.value {
+        if let id = id {
             expect(id.trakt) == 36440
             expect(id.tvdb) == 3254641
             expect(id.imdb) == "tt1480055"
@@ -53,8 +52,7 @@ class ModelsTests: XCTestCase {
             "thumb": "https://walter.trakt.us/images/episodes/000/036/440/screenshots/thumb/529938d3cd.jpg?1409354198"
         ]
         
-        let value = JSON.parse(json)
-        let obj = ImagesURLs.decode(value).value
+        let obj = ImagesURLs.decode(json)
         
         expect(obj).toNot(beNil())
         
@@ -72,8 +70,7 @@ class ModelsTests: XCTestCase {
             "thumb": "https://walter.trakt.us/images/episodes/000/036/440/screenshots/thumb/529938d3cd.jpg?1409354198"
         ]
         
-        let value = JSON.parse(json)
-        let obj = ImagesURLs.decode(value).value
+        let obj = ImagesURLs.decode(json)
         
         expect(obj).toNot(beNil())
         
@@ -90,8 +87,7 @@ class ModelsTests: XCTestCase {
             "thumb": "https://walter.trakt.us/images/episodes/000/036/440/screenshots/thumb/529938d3cd.jpg?1409354198"
         ]
         
-        let value = JSON.parse(json)
-        let obj = ImagesURLs.decode(value).value
+        let obj = ImagesURLs.decode(json)
         
         expect(obj).toNot(beNil())
         
@@ -132,8 +128,7 @@ class ModelsTests: XCTestCase {
             ]
         ]
         
-        let value = JSON.parse(json)
-        let episode = Episode.decode(value).value
+        let episode = Episode.decode(json)
         
         expect(episode).toNot(beNil())
         
@@ -246,8 +241,7 @@ class ModelsTests: XCTestCase {
             ]
         ]
         
-        let value = JSON.parse(json)
-        let show = Show.decode(value).value
+        let show = Show.decode(json)
         
         expect(show).toNot(beNil())
         
@@ -328,8 +322,7 @@ class ModelsTests: XCTestCase {
             ]
         ]
         
-        let value = JSON.parse(json)
-        let season = Season.decode(value).value
+        let season = Season.decode(json)
         
         expect(season).toNot(beNil())
         

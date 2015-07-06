@@ -6,9 +6,7 @@
 //  Copyright (c) 2015 Movile. All rights reserved.
 //
 
-import Argo
-import Runes
-import ISO8601DateFormatter
+import Foundation
 
 public struct Identifiers {
     public let trakt: Int
@@ -19,38 +17,21 @@ public struct Identifiers {
     public let slug: String?
 }
 
-extension Identifiers: Decodable {
-    static func create(trakt: Int)(tvdb: Int?)(imdb: String?)(tmdb: Int?)(tvrage: Int?)(slug: String?) -> Identifiers {
-        return Identifiers(trakt: trakt, tvdb: tvdb, imdb: imdb, tmdb: tmdb, tvrage: tvrage, slug: slug)
-    }
-    
-    public static func decode(j: JSON) -> Decoded<Identifiers> {
-        return Identifiers.create
-            <^> j <| "trakt"
-            <*> j <|? "tvdb"
-            <*> j <|? "imdb"
-            <*> j <|? "tmdb"
-            <*> j <|? "tvrage"
-            <*> j <|? "slug"        
-    }
-}
-
-struct JSONParseUtils {
-    static func parseURL(URLString: String?) -> Decoded<NSURL?> {
-        return pure(flatMap(URLString) { NSURL(string: $0) })
-    }
-}
-
-extension NSDate: Decodable {
-    class DateFormatterWrapper {
-        static let dateFormatter = ISO8601DateFormatter()
-    }
-    
-    public static func decode(j: JSON) -> Decoded<NSDate> {
-        switch j {
-        case let .String(s): return .fromOptional(DateFormatterWrapper.dateFormatter.dateFromString(s))
-        default: return .TypeMismatch("\(j) is not a String") // Provide an Error message for a string type mismatch
+extension Identifiers: JSONDecodable {
+    public static func decode(j: AnyObject) -> Identifiers? {
+        if let json = j as? NSDictionary,
+            trakt = json["trakt"] as? Int {
+                
+                let tvdb = json["tvdb"] as? Int
+                let imdb = json["imdb"] as? String
+                let tmdb = json["tmdb"] as? Int
+                let tvrage = json["tvrage"] as? Int
+                let slug = json["slug"] as? String
+                
+                return Identifiers(trakt: trakt, tvdb: tvdb, imdb: imdb, tmdb: tmdb, tvrage: tvrage, slug: slug)
         }
+        
+        return nil
     }
 }
 
@@ -60,16 +41,19 @@ public struct ImagesURLs {
     public let thumbImageURL: NSURL?
 }
 
-extension ImagesURLs: Decodable {
-    static func create(fullImageURL: NSURL?)(mediumImageURL: NSURL?)(thumbImageURL: NSURL?) -> ImagesURLs {
-        return ImagesURLs(fullImageURL: fullImageURL, mediumImageURL: mediumImageURL, thumbImageURL: thumbImageURL)
-    }
-    
-    public static func decode(j: JSON) -> Decoded<ImagesURLs> {
-        return ImagesURLs.create
-            <^> (j <|? "full" >>- JSONParseUtils.parseURL)
-            <*> (j <|? "medium" >>- JSONParseUtils.parseURL)
-            <*> (j <|? "thumb" >>- JSONParseUtils.parseURL)
+extension ImagesURLs: JSONDecodable {
+    public static func decode(j: AnyObject) -> ImagesURLs? {
+        if let json = j as? NSDictionary {
+            let full = json["full"] as? String
+            let medium = json["medium"] as? String
+            let thumb = json["thumb"] as? String
+            
+            return ImagesURLs(fullImageURL: JSONParseUtils.parseURL(full),
+                mediumImageURL: JSONParseUtils.parseURL(medium),
+                thumbImageURL: JSONParseUtils.parseURL(thumb))
+        }
+        
+        return nil
     }
 }
 
@@ -86,25 +70,24 @@ public struct Episode {
     public let screenshot: ImagesURLs?
 }
 
-extension Episode: Decodable {
-    static func create(number: Int)(seasonNumber: Int)(title: String?)(identifiers: Identifiers?)(overview: String?)(firstAired: NSDate?)
-        (rating: Float?)(votes: Int?)(screenshot: ImagesURLs?) -> Episode {
+extension Episode: JSONDecodable {
+    public static func decode(j: AnyObject) -> Episode? {
         
-        return Episode(number: number, seasonNumber: seasonNumber, title: title, identifiers: identifiers,
-            overview: overview, firstAired: firstAired, rating: rating, votes: votes, screenshot: screenshot)
-    }
-    
-    public static func decode(j: JSON) -> Decoded<Episode> {
+        if let json = j as? NSDictionary,
+            number = json["number"] as? Int,
+            seasonNumber = json["season"] as? Int {
+                let title = json["title"] as? String
+                let ids = flatMap(json["ids"]) { Identifiers.decode($0) }
+                let overview = json["overview"] as? String
+                let firstAired = JSONParseUtils.parseDate(json["first_aired"] as? String)
+                let rating = json["rating"] as? Float
+                let votes = json["votes"] as? Int
+                
+                let screenshot = flatMap(json["images"]?["screenshot"]) { ImagesURLs.decode($0) }
+                
+                return Episode(number: number, seasonNumber: seasonNumber, title: title, identifiers: ids, overview: overview, firstAired: firstAired, rating: rating, votes: votes, screenshot: screenshot)
+        }
         
-        return Episode.create
-            <^> j <| "number"
-            <*> j <| "season"
-            <*> j <|? "title"
-            <*> j <|? "ids"
-            <*> j <|? "overview"
-            <*> j <|? "first_aired"
-            <*> j <|? "rating"
-            <*> j <|? "votes"
-            <*> j <|? ["images", "screenshot"]
+        return nil
     }
 }

@@ -17,12 +17,13 @@ public enum ShowStatus: String {
     case Ended = "ended"
 }
 
-extension ShowStatus: Decodable {
-    public static func decode(j: JSON) -> Decoded<ShowStatus> {
-        switch j {
-        case let .String(s): return .fromOptional(ShowStatus(rawValue: s))
-        default: return .TypeMismatch("\(j) is not a String") // Provide an Error message for a string type mismatch
+extension ShowStatus: JSONDecodable {
+    public static func decode(j: AnyObject) -> ShowStatus? {
+        if let json = j as? String {
+            return ShowStatus(rawValue: json)
         }
+        
+        return nil
     }
 }
 
@@ -50,48 +51,46 @@ public struct Show {
     public let thumbImageURL: NSURL?
 }
 
-extension Show: Decodable {
+extension Show: JSONDecodable {
     
-    // https://github.com/thoughtbot/Argo/issues/106
-    static func create(title: String)(_ year: Int)(_ identifiers: Identifiers)(_ overview: String?)(_ firstAired: NSDate?)(_ runtime: Int?)(_ network: String?)
-        (_ country: String?)(_ trailerURL: NSURL?)(_ homepageURL: NSURL?)(_ status: ShowStatus?)(_ rating: Float?)(_ votes: Int?)(_ genres: [String]?)
-        (_ airedEpisodes: Int?)(_ fanart: ImagesURLs?)(_ poster: ImagesURLs?)(_ logoImageURL: NSURL?)(_ clearArtImageURL: NSURL?)
-        (_ bannerImageURL: NSURL?)(_ thumbImageURL: NSURL?)
-        -> Show {
-            
-        return Show(title: title, year: year, identifiers: identifiers, overview: overview, firstAired: firstAired, runtime: runtime,
-            network: network, country: country, trailerURL: trailerURL, homepageURL: homepageURL, status: status, rating: rating, votes: votes, genres: genres,
-            airedEpisodes: airedEpisodes, fanart: fanart, poster: poster, logoImageURL: logoImageURL, clearArtImageURL: clearArtImageURL,
-            bannerImageURL: bannerImageURL, thumbImageURL: thumbImageURL)
+    private static func fullImageURL(j: AnyObject?) -> NSURL? {
+        if let json = j as? NSDictionary {
+            return flatMap(json["full"] as? String) { JSONParseUtils.parseURL($0) }
+        }
+        
+        return nil
     }
     
-    public static func decode(j: JSON) -> Decoded<Show> {
-        let s1 = Show.create
-            <^> j <| "title"
-            <*> j <| "year"
-            <*> j <| "ids"
-            <*> j <|? "overview"
-            <*> j <|? "first_aired"
-            <*> j <|? "runtime"
-            <*> j <|? "network"
-            <*> j <|? "country"
-            <*> (j <|? "trailer" >>- JSONParseUtils.parseURL)
+    public static func decode(j: AnyObject) -> Show? {
+        if let json = j as? NSDictionary,
+            title = json["title"] as? String,
+            year = json["year"] as? Int,
+            ids = flatMap(json["ids"], { Identifiers.decode($0) }) {
+                let overview = json["overview"] as? String
+                let firstAired = JSONParseUtils.parseDate(json["first_aired"] as? String)
+                let runtime = json["runtime"] as? Int
+                let network = json["network"] as? String
+                let country = json["country"] as? String
+                let trailerURL = JSONParseUtils.parseURL(json["trailer"] as? String)
+                let homepageURL = JSONParseUtils.parseURL(json["homepage"] as? String)
+                let status = flatMap(json["status"]) { ShowStatus.decode($0) }
+                let rating = json["rating"] as? Float
+                let votes = json["votes"] as? Int
+                let genres = json["genres"] as? [String]
+                let airedEpisodes = json["aired_episodes"] as? Int
+                
+                let images = json["images"] as? NSDictionary
+                let fanart = flatMap(images?["fanart"]) { ImagesURLs.decode($0) }
+                let poster = flatMap(images?["poster"]) { ImagesURLs.decode($0) }
+                let logoImageURL = fullImageURL(images?["logo"])
+                let clearArtImageURL = fullImageURL(images?["clearart"])
+                let bannerImageURL = fullImageURL(images?["banner"])
+                let thumbImageURL = fullImageURL(images?["thumb"])
+                
+                return Show(title: title, year: year, identifiers: ids, overview: overview, firstAired: firstAired, runtime: runtime, network: network, country: country, trailerURL: trailerURL, homepageURL: homepageURL, status: status, rating: rating, votes: votes, genres: genres, airedEpisodes: airedEpisodes, fanart: fanart, poster: poster, logoImageURL: logoImageURL, clearArtImageURL: clearArtImageURL, bannerImageURL: bannerImageURL, thumbImageURL: thumbImageURL)
+        }
         
-        let s2 = s1
-            <*> (j <|? "homepage" >>- JSONParseUtils.parseURL)
-            <*> j <|? "status"
-            <*> j <|? "rating"
-            <*> j <|? "votes"
-            <*> j <||? "genres"
-            <*> j <|? "aired_episodes"
-        
-        return s2
-            <*> j <|? ["images", "fanart"]
-            <*> j <|? ["images", "poster"]
-            <*> (j <|? ["images", "logo", "full"] >>- JSONParseUtils.parseURL)
-            <*> (j <|? ["images", "clearart", "full"] >>- JSONParseUtils.parseURL)
-            <*> (j <|? ["images", "banner", "full"] >>- JSONParseUtils.parseURL)
-            <*> (j <|? ["images", "thumb", "full"] >>- JSONParseUtils.parseURL)
+        return nil
     }
 }
 
