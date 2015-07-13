@@ -6,8 +6,6 @@
 //  Copyright (c) 2015 Movile. All rights reserved.
 //
 
-import ISO8601DateFormatter
-
 public enum ShowStatus: String {
     case Returning = "returning series"
     case InProduction = "in production"
